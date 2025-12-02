@@ -1,8 +1,7 @@
 // api/sendReminders.js
-// Узел: серверная функция на Vercel для рассылки напоминаний в Telegram
-// БЕЗ firebase-admin, только web-SDK firebase + Telegram Bot API.
+// Серверная функция на Vercel для рассылки напоминаний в Telegram.
+// Без firebase-admin, без node-fetch. Используем global fetch и web SDK Firebase.
 
-import fetch from "node-fetch"; // Vercel тянет node-fetch v2, это ок
 import { initializeApp, getApps } from "firebase/app";
 import {
   getFirestore,
@@ -10,34 +9,29 @@ import {
   getDocs,
 } from "firebase/firestore";
 
-// ---- Конфиг Firebase из переменной окружения ----
-// В Vercel у тебя уже есть переменная FIREBASE_API_KEY,
-// в неё мы раньше клали ВЕСЬ объект firebaseConfig в формате JSON.
-// Здесь просто парсим его.
-const rawConfig = process.env.FIREBASE_API_KEY;
+// ⚙️ Твой firebaseConfig — такой же, как в фронтенде
+const firebaseConfig = {
+  apiKey: "AIzaSyCOHeMkOIwG0ddkwh3zz4o5pyfR97jPS50",
+  authDomain: "adventlp.firebaseapp.com",
+  projectId: "adventlp",
+  storageBucket: "adventlp.firebasestorage.app",
+  messagingSenderId: "1025160764098",
+  appId: "1:1025160764098:web:35d99c13486ece5753f95b",
+  measurementId: "G-SNGM8LTHJX",
+};
 
-if (!rawConfig) {
-  console.error("FIREBASE_API_KEY is not set in environment variables");
-}
-
-let db = null;
+let dbInstance = null;
 
 function getDb() {
-  if (!db) {
-    if (!rawConfig) {
-      throw new Error("Missing FIREBASE_API_KEY env var with firebaseConfig JSON");
-    }
-
-    const firebaseConfig = JSON.parse(rawConfig);
-
+  if (!dbInstance) {
     const app =
       getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    dbInstance = getFirestore(app);
   }
-  return db;
+  return dbInstance;
 }
 
-// ---- Telegram ----
+// 🔔 Telegram
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 async function sendTelegramMessage(chatId, text) {
@@ -64,7 +58,6 @@ async function sendTelegramMessage(chatId, text) {
   }
 }
 
-// ---- Handler ----
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.status(405).json({ ok: false, error: "Method not allowed" });
@@ -74,10 +67,10 @@ export default async function handler(req, res) {
   try {
     const db = getDb();
 
-    // Коллекция, где мы храним подписки из приложения
-    // (Я раньше предлагал что-то вроде "adventlp_reminders" —
-    //   если у тебя другое имя, просто поменяй его тут.)
-    const colRef = collection(db, "adventlp_reminders");
+    // ⚠️ Имя коллекции: поставь то, которое у тебя реально используется
+    // в сохранении подписок на напоминания.
+    // Например, если в App.jsx ты пишешь в "reminders" -> оставь "reminders".
+    const colRef = collection(db, "reminders");
 
     const snapshot = await getDocs(colRef);
 
@@ -106,7 +99,6 @@ export default async function handler(req, res) {
       `Загляни в приложение LifePractic Advent за сегодняшним заданием и порцией тепла.\n\n` +
       `Дата: ${now}`;
 
-    // Рассылаем всем подписчикам
     await Promise.all(
       subscribers.map((s) => sendTelegramMessage(s.chatId, text))
     );
