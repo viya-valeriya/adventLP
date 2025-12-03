@@ -1,29 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-
   "framework": "vite",
-
   "functions": {
-    "api/*.js": {
-      "runtime": "nodejs18.x"
+    "api/**/*.{js,ts}": {
+      "runtime": "nodejs22.x"
     }
   },
-
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
-
   "crons": [
-    {
-      "path": "/api/remind",
-      "schedule": "*/5 * * * *"
-    }
+    { "path": "/api/remind", "schedule": "*/5 * * * *" }
   ]
 }
